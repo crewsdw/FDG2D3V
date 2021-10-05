@@ -131,13 +131,13 @@ def jacobian_fsolve(om, wave, ring_j, terms):
 
 
 # Define complex plane
-angle = 80 * np.pi / 180.0
-k_perp = 0.15
+angle = 45 * np.pi / 180.0
+k_perp = 0.55
 k_para = k_perp / np.tan(angle)
 print(k_para), print(k_perp)
 
-z_r = np.linspace(-0.5, 2.5, num=500)
-z_i = np.linspace(-0.2, 0.02, num=500)
+z_r = np.linspace(-0.5, 3.5, num=500)
+z_i = np.linspace(-0.8, 0.02, num=500)
 z = (np.tensordot(z_r, np.ones_like(z_i), axes=0) +
      1.0j * np.tensordot(np.ones_like(z_r), z_i, axes=0))
 X, Y = np.tensordot(z_r, np.ones_like(z_i), axes=0), np.tensordot(np.ones_like(z_r), z_i, axes=0)
@@ -164,8 +164,8 @@ plt.show()
 # Root solve, analysis at 45 degrees to field
 num = 75
 
-angle = 80 * np.pi / 180.0
-k_perp = np.linspace(0.001, 1.75, num=num)
+angle = 45 * np.pi / 180.0
+k_perp = np.linspace(0.05, 0.95, num=num)
 k_para = k_perp / np.tan(angle)
 
 wave = np.sqrt(k_para ** 2.0 + k_perp ** 2.0)
@@ -178,55 +178,66 @@ guess_r1, guess_i1 = np.zeros_like(k_para), np.zeros_like(k_para)
 guess_r2, guess_i2 = np.zeros_like(k_para), np.zeros_like(k_para)
 guess_r3, guess_i3 = np.zeros_like(k_para), np.zeros_like(k_para)
 
-guess_r1[k_perp <= 0.22] = 1.4
+
+# 80 degrees
+guess_r1[k_perp <= 0.22] = 1.26
 guess_r1[k_perp >= 0.22] = 1.38
-guess_r1[k_perp >= 0.3] = 1.3
-guess_r1[k_perp >= 0.5] = 1.3
-guess_r1[k_perp >= 0.6] = 1.25
-guess_r1[k_perp >= 0.7] = 1.23
+guess_r1[k_perp >= 0.3] = 1.4
+guess_r1[k_perp >= 0.4] = 1.5
+guess_r1[k_perp >= 0.5] = 1.6
+guess_r1[k_perp >= 0.6] = 1.7
+guess_r1[k_perp >= 0.8] = 1.8
 
-guess_i1[k_perp <= 0.2] = -0.000001
-guess_i1[k_perp >= 0.2] = -0.000001
-guess_i1[k_perp >= 0.7] = -0.03
-guess_i1[k_perp >= 1.0] = -0.2
+guess_i1[k_perp <= 0.2] = -0.01
+guess_i1[k_perp >= 0.2] = -0.01
+guess_i1[k_perp >= 0.4] = -0.25
+guess_i1[k_perp >= 0.5] = -0.3
+guess_i1[k_perp >= 0.6] = -0.5
+guess_i1[k_perp >= 0.8] = -1
 
-guess_r2[k_perp <= 0.2] = 0.1
-guess_r2[k_perp >= 0.2] = 0.1
-guess_r2[k_perp >= 0.9] = 0.2
-guess_r2[k_perp >= 1.4] = 0.3
+guess_r2[k_perp <= 0.2] = 0.37
+guess_r2[k_perp >= 0.2] = 0.4
+guess_r2[k_perp >= 0.4] = 0.6
+guess_r2[k_perp >= 0.7] = 0.7
+guess_r2[k_perp >= 0.8] = 0.8
+# guess_r2[k_perp >= 0.9] = 0.7
 
-guess_i2[k_perp <= 0.2] = -0.001
-guess_i2[k_perp >= 0.2] = -0.01
-guess_i2[k_perp >= 0.9] = -0.1
-guess_i2[k_perp >= 1] = -0.2
-guess_i2[k_perp >= 1.4] = -0.4
+guess_i2[k_perp <= 0.2] = -0.0001
+guess_i2[k_perp >= 0.2] = -0.1
+guess_i2[k_perp >= 0.4] = -0.45
+guess_i2[k_perp >= 0.6] = -0.6
+guess_i2[k_perp >= 0.7] = -0.9
+guess_i2[k_perp >= 0.8] = -1.2
+# guess_i2[k_perp >= 1.4] = -0.4
 
 guess_r3[k_perp <= 0.2] = 2.01
 guess_r3[k_perp >= 0.2] = 2.05
-guess_r3[k_perp >= 0.9] = 2.2
+guess_r3[k_perp >= 0.2] = 2.2
+guess_r3[k_perp >= 0.9] = 2.5
 
-guess_i3[k_perp <= 0.2] = -0.01
-guess_i3[k_perp >= 0.2] = -0.05
-guess_i3[k_perp >= 0.9] = -0.1
-guess_i3[k_perp >= 1] = -0.2
+guess_i3[k_perp <= 0.2] = -0.15
+guess_i3[k_perp >= 0.2] = -0.3
+guess_i3[k_perp >= 0.5] = -0.5
+guess_i3[k_perp >= 0.9] = -0.7
+guess_i3[k_perp >= 1] = -1.2
 
 for idx in range(k_para.shape[0]):
     sol = opt.root(dispersion_fsolve, x0=np.array([guess_r1[idx], guess_i1[idx]]),
-                   args=(waves[:, idx], 0, 5), jac=jacobian_fsolve)
+                   args=(waves[:, idx], 0, 10), jac=jacobian_fsolve)
     mode1[idx] = sol.x[0] + 1j * sol.x[1]
     sol = opt.root(dispersion_fsolve, x0=np.array([guess_r2[idx], guess_i2[idx]]),
                    args=(waves[:, idx], 0, 10), jac=jacobian_fsolve)
     mode2[idx] = sol.x[0] + 1j * sol.x[1]
-    sol = opt.root(dispersion_fsolve, x0=np.array([guess_r3[idx], guess_i3[idx]]),
-                   args=(waves[:, idx], 0, 10), jac=jacobian_fsolve)
-    mode3[idx] = sol.x[0] + 1j * sol.x[1]
+    # sol = opt.root(dispersion_fsolve, x0=np.array([guess_r3[idx], guess_i3[idx]]),
+    #                args=(waves[:, idx], 0, 10), jac=jacobian_fsolve)
+    # mode3[idx] = sol.x[0] + 1j * sol.x[1]
 
 # Scale solution to frequency
 # mode1_om = np.multiply(k_para, mode1)
 # mode2_om = np.multiply(k_para, mode2)
-mode1_om = np.append([1.414], mode1)
+mode1_om = np.append([1.26], mode1)
 wave = np.append([0], wave)
-mode2_om = np.append([0.087], mode2)
+mode2_om = np.append([0.4], mode2)
 mode3_om = np.append([2], mode3)
 
 plt.figure()
@@ -234,14 +245,49 @@ plt.plot(wave, np.real(mode1_om), 'k')
 plt.plot(wave, np.imag(mode1_om), 'k--')
 plt.plot(wave, np.real(mode2_om), 'g')
 plt.plot(wave, np.imag(mode2_om), 'g--')
-plt.plot(wave, np.real(mode3_om), 'r')
-plt.plot(wave, np.imag(mode3_om), 'r--')
-plt.axis([wave[0], wave[-1], -0.9, 2.4])
+# plt.plot(wave, np.real(mode3_om), 'r')
+# plt.plot(wave, np.imag(mode3_om), 'r--')
+plt.axis([wave[0], wave[-1], -1.3, 2.4])
 plt.xlabel(r'Wavenumber $\sqrt{k_\perp^2+k_\parallel^2}$'), plt.ylabel('Frequency')
-plt.grid(True), plt.title(r'Angle $\theta=80^\circ$'), plt.tight_layout()
+plt.grid(True), plt.title(r'Angle $\theta=45^\circ$'), plt.tight_layout()
 plt.show()
 
 quit()
 
 # Run parameters
 # k_para, k_perp = 0.5, 0.5
+
+
+# Guesses
+# 80 degrees
+# guess_r1[k_perp <= 0.22] = 1.4
+# guess_r1[k_perp >= 0.22] = 1.38
+# guess_r1[k_perp >= 0.3] = 1.3
+# guess_r1[k_perp >= 0.5] = 1.3
+# guess_r1[k_perp >= 0.6] = 1.25
+# guess_r1[k_perp >= 0.7] = 1.23
+#
+# guess_i1[k_perp <= 0.2] = -0.000001
+# guess_i1[k_perp >= 0.2] = -0.000001
+# guess_i1[k_perp >= 0.7] = -0.03
+# guess_i1[k_perp >= 1.0] = -0.2
+#
+# guess_r2[k_perp <= 0.2] = 0.1
+# guess_r2[k_perp >= 0.2] = 0.1
+# guess_r2[k_perp >= 0.9] = 0.2
+# guess_r2[k_perp >= 1.4] = 0.3
+#
+# guess_i2[k_perp <= 0.2] = -0.001
+# guess_i2[k_perp >= 0.2] = -0.01
+# guess_i2[k_perp >= 0.9] = -0.1
+# guess_i2[k_perp >= 1] = -0.2
+# guess_i2[k_perp >= 1.4] = -0.4
+#
+# guess_r3[k_perp <= 0.2] = 2.01
+# guess_r3[k_perp >= 0.2] = 2.05
+# guess_r3[k_perp >= 0.9] = 2.2
+#
+# guess_i3[k_perp <= 0.2] = -0.01
+# guess_i3[k_perp >= 0.2] = -0.05
+# guess_i3[k_perp >= 0.9] = -0.1
+# guess_i3[k_perp >= 1] = -0.2
