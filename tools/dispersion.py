@@ -86,14 +86,14 @@ def jacobian_fsolve(om, wave, om_pc, ring_j, terms):
 
 # Define complex plane
 om_pc = 10
-ring_j = 6
-angle = 60 * np.pi / 180.0
+ring_j = 3 * np.pi
+angle = 85 * np.pi / 180.0
 k_perp = 0.888
 k_para = k_perp / np.tan(angle)
 print(k_para), print(k_perp)
 
-z_r = np.linspace(-1, 12, num=500)
-z_i = np.linspace(-1, 2.5, num=500)
+z_r = np.linspace(-1.5, 3.5, num=500)
+z_i = np.linspace(-0.2, 0.6, num=500)
 z = (np.tensordot(z_r, np.ones_like(z_i), axes=0) +
      1.0j * np.tensordot(np.ones_like(z_r), z_i, axes=0))
 X, Y = np.tensordot(z_r, np.ones_like(z_i), axes=0), np.tensordot(np.ones_like(z_r), z_i, axes=0)
