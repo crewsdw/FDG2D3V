@@ -6,121 +6,49 @@ import matplotlib.pyplot as plt
 # import cupy as cp
 import scipy.optimize as opt
 import scipy.signal as sig
-
-# "Global" parameters
-def Z_uniform(z):
-    out = np.zeros_like(z) + 0j
-    # z_upper = z[np.imag(z) >= 0]
-    # out[np.imag(z) >= 0] = (np.imag(sig.hilbert(np.real(z_upper))) +
-    #                        1j * np.imag(sig.hilbert(np.imag(z_upper)))) / np.sqrt(np.pi)
-    #
-    # z_lower = z[np.imag(z) < 0]
-    # out[np.imag(z) < 0] = 1j * np.sqrt(np.pi) * np.exp(-z_lower ** 2.0) * (1.0 + sp.erf(1j * z_lower))
-    # return out
-    z_large = z[np.abs(z) >= 15]
-    z_small = z[np.abs(z) < 15]
-    out[np.abs(z) < 15] = 1j * np.sqrt(np.pi) * np.exp(-z_small ** 2.0) * (1.0 + sp.erf(1j * z_small))
-    out[np.abs(z) >= 15] = Z_asymptotic(z_large)
-    return out
+import plasma_dispersion as pd
 
 
-def Z_asymptotic(z):
-    sig = np.zeros_like(z)
-    sig[np.imag(z) > 0] = 0
-    sig[np.imag(z) == 0] = 1
-    sig[np.imag(z) < 0] = 2
-
-    return 1j * sig * np.sqrt(np.pi) * np.exp(-z ** 2.0) - (1.0 / z + 1.0 / (2.0 * (z ** 3.0)) +
-                                                            3.0 / (4.0 * (z ** 5.0)) + 15.0 / (8.0 * (z ** 7.0)))
-
-
-def Z_asymptotic_no_exp(z):
-    return - (1.0 / z + 1.0 / (2.0 * (z ** 3.0)) + 3.0 / (4.0 * (z ** 5.0)) + 15.0 / (8.0 * (z ** 7.0)))
-
-
-def a_cf(z, n):
-    n -= 1
-    if n == 0:
-        return z
-    else:
-        return 0.5 * n * (2 * n - 1)
-
-
-def b_cf(z, n):
-    n -= 1
-    return -z ** 2.0 + 2 * n + 0.5
-
-
-def Z_continued_fraction(z, terms):
-    A = np.zeros((terms + 1, z.shape[0])) + 0j
-    B = np.zeros((terms + 1, z.shape[0])) + 0j
-    A[0, :], A[1, :] = 1, 0
-    B[0, :], B[1, :] = 0, 1
-
-    for n in range(1, terms):
-        a, b = a_cf(z, n), b_cf(z, n)
-        A[n + 1, :] = a * A[n - 1, :] + b * A[n, :]
-        B[n + 1, :] = a * B[n - 1, :] + b * B[n, :]
-
-    return np.divide(A[-1, :], B[-1, :])
-
-
-def Z(z):
-    out = np.zeros_like(z) + 0j
-
-    y_cutoff = 4
-    # x, y = np.real(z), np.imag(z)
-
-    out[np.imag(z) < y_cutoff] = Z_uniform(z[np.imag(z) < y_cutoff])
-    out[np.imag(z) > y_cutoff] = Z_continued_fraction(z[np.imag(z) > y_cutoff], terms=25)
-    return out
-    # return np.where(np.abs(z) < 25, Z_uniform(z[np.abs(z) < 25]), Z_asymptotic(z[np.abs(z) > 25]))
-    # return Z_uniform(z)
-
-
-def Zprime(z):
-    return -2 * (1 + z * Z(z))
-
-
-def Zdoubleprime(z):
-    return -2 * (Z(z) + z * Zprime(z))
-
-
-def hyp2f2(n, j, x):
+# Functions
+def hyp2f2(n, j, x, terms):
     # compute coefficients
     out = 0
     a = n + 0.5
-    c = 2*a
-    d = n+1
-    for m in range(j):
-        # print(m)
-        A = sp.gamma(j + 1) / (sp.gamma(m + 1) * sp.gamma(j - m + 1))
-        # B = sp.gamma(a + m) / sp.gamma(2 * a + m)
-        # C = sp.gamma(n - m)
-        B = sp.gamma(a + m) / (sp.gamma(m + 1) * sp.gamma(a))
-        C = sp.gamma(c + m) / (sp.gamma(m + 1) * sp.gamma(c))
-        D = sp.gamma(d + m) / (sp.gamma(m + 1) * sp.gamma(d))
-        # print(A), print(B), print(C), print(D)
-        out += (A * B) / (C * D) * sp.hyp1f1(a + m, 2 * a + m, x) * (x ** m / sp.gamma(m + 1))
+    b = n + j + 1
+    c = 2 * a
+    d = n + 1
+    for m in range(terms):
+        A = sp.poch(a, m)
+        B = sp.poch(b, m)
+        C = sp.poch(c, m)
+        D = sp.poch(d, m)  # print(A), print(B), print(C), print(D)
+        out += (A * B) / (C * D) * (x ** m / sp.gamma(m + 1))
     # quit()
     return out
-    # return (2 ** n) * out / np.sqrt(np.pi)
+
+
+def para_perp_integral(n, j, x):
+    n = abs(n)
+    return sp.gamma(n + j + 1) / (sp.gamma(n + 1) ** 2.0 * sp.gamma(j+1)) * (((-x / 4.0) ** n) *
+                                                                               hyp2f2(n, j, x, terms=35))
 
 
 def perp_integral(n, j, x):
     n = abs(n)
-    return sp.gamma(n + j + 1) / (sp.gamma(n + 1) ** 2.0 * sp.gamma(j + 1)) * (((-x / 4.0) ** n) *
-                                                                                            hyp2f2(n, j, x))
+    int1 = sp.gamma(n + j) * hyp2f2(n, j-1, x, terms=35) / sp.gamma(j)
+    int2 = sp.gamma(n + j + 1) * hyp2f2(n, j, x, terms=35) / sp.gamma(j+1)
+    return ((-x / 4.0) ** n) * (int2 - int1) / (sp.gamma(n + 1) ** 2.0)
 
 
 def modified(z, k_perp, k_para, om_pc, ring_j, terms):
     x = -2 * k_perp ** 2.0
     ksq = k_perp ** 2.0 + k_para ** 2.0
     # compute hyper-geometric
-    print([s for s in range(1-terms, terms)])
+    print([s for s in range(1 - terms, terms)])
 
     return 1.0 - om_pc ** 2.0 / ksq * sum([
-        perp_integral(n=s, j=ring_j, x=x) * (0.5 * Zprime((z - s) / k_para) - s / k_para * Z((z - s) / k_para))
+        (para_perp_integral(n=s, j=ring_j, x=x) * 0.5 * pd.Zprime((z - s) / k_para) -
+         perp_integral(n=s, j=ring_j, x=x) * s / k_para * pd.Z((z - s) / k_para))
         for s in range(1 - terms, terms)])
 
 
@@ -128,8 +56,8 @@ def analytic_jacobian(z, k_perp, k_para, om_pc, ring_j, terms):
     x = -2 * k_perp ** 2.0
     ksq = k_perp ** 2.0 + k_para ** 2.0
     return -om_pc ** 2.0 / ksq * sum([
-        perp_integral(n=s, j=ring_j, x=x) * (0.5 * Zdoubleprime((z - s) / k_para) / k_para -
-                                             s / k_para * Zprime((z - s) / (k_para ** 2.0)))
+        perp_integral(n=s, j=ring_j, x=x) * (0.5 * pd.Zdoubleprime((z - s) / k_para) / k_para -
+                                             s / k_para * pd.Zprime((z - s) / (k_para ** 2.0)))
         for s in range(1 - terms, terms)])
 
 
@@ -137,7 +65,7 @@ def standard(z, k_perp, k_para, terms):
     b = k_perp ** 2.0
     ksq = k_perp ** 2.0 + k_para ** 2.0
     return 1.0 - np.exp(-b) / ksq * sum([
-        sp.iv(abs(s), b) * (0.5 * Zprime((z - s) / k_para) - s / k_para * Z((z - s) / k_para))
+        sp.iv(abs(s), b) * (0.5 * pd.Zprime((z - s) / k_para) - s / k_para * pd.Z((z - s) / k_para))
         for s in range(1 - terms, terms)
     ])
 
@@ -157,15 +85,15 @@ def jacobian_fsolve(om, wave, om_pc, ring_j, terms):
 
 
 # Define complex plane
-om_pc = 1
-ring_j = 1
-angle = 89 * np.pi / 180.0
-k_perp = 0.8
+om_pc = 10
+ring_j = 6
+angle = 60 * np.pi / 180.0
+k_perp = 0.888
 k_para = k_perp / np.tan(angle)
 print(k_para), print(k_perp)
 
-z_r = np.linspace(-1, 4, num=500)
-z_i = np.linspace(-0.1, 0.7, num=500)
+z_r = np.linspace(-1, 12, num=500)
+z_i = np.linspace(-1, 2.5, num=500)
 z = (np.tensordot(z_r, np.ones_like(z_i), axes=0) +
      1.0j * np.tensordot(np.ones_like(z_r), z_i, axes=0))
 X, Y = np.tensordot(z_r, np.ones_like(z_i), axes=0), np.tensordot(np.ones_like(z_r), z_i, axes=0)
@@ -357,3 +285,23 @@ quit()
 #     ksq = k_perp ** 2.0 + k_para ** 2.0
 #     return (1 - V_parallel(z, k_perp, k_para, ring_j, terms=terms) / (ksq ** 2.0) +
 #             V_perp(z, k_perp, k_para, ring_j, terms=terms) / (ksq ** 2.0) / k_para / om_pc)
+
+# def hyp2f2(n, j, x):
+#     # compute coefficients
+#     out = 0
+#     a = n + 0.5
+#     c = 2*a
+#     d = n+1
+#     for m in range(j):
+#         # print(m)
+#         A = sp.gamma(j + 1) / (sp.gamma(m + 1) * sp.gamma(j - m + 1))
+#         # B = sp.gamma(a + m) / sp.gamma(2 * a + m)
+#         # C = sp.gamma(n - m)
+#         B = sp.gamma(a + m) / (sp.gamma(m + 1) * sp.gamma(a))
+#         C = sp.gamma(c + m) / (sp.gamma(m + 1) * sp.gamma(c))
+#         D = sp.gamma(d + m) / (sp.gamma(m + 1) * sp.gamma(d))
+#         # print(A), print(B), print(C), print(D)
+#         out += (A * B) / (C * D) * sp.hyp1f1(a + m, 2 * a + m, x) * (x ** m / sp.gamma(m + 1))
+#     # quit()
+#     return out
+#     # return (2 ** n) * out / np.sqrt(np.pi)
