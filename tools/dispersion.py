@@ -29,14 +29,14 @@ def hyp2f2(n, j, x, terms):
 
 def para_perp_integral(n, j, x):
     n = abs(n)
-    return sp.gamma(n + j + 1) / (sp.gamma(n + 1) ** 2.0 * sp.gamma(j+1)) * (((-x / 4.0) ** n) *
+    return sp.gamma(n + j + 1) / (sp.gamma(n + 1) ** 2.0 * sp.gamma(j + 1)) * (((-x / 4.0) ** n) *
                                                                                hyp2f2(n, j, x, terms=35))
 
 
 def perp_integral(n, j, x):
     n = abs(n)
-    int1 = sp.gamma(n + j) * hyp2f2(n, j-1, x, terms=35) / sp.gamma(j)
-    int2 = sp.gamma(n + j + 1) * hyp2f2(n, j, x, terms=35) / sp.gamma(j+1)
+    int1 = sp.gamma(n + j) * hyp2f2(n, j - 1, x, terms=35) / sp.gamma(j)
+    int2 = sp.gamma(n + j + 1) * hyp2f2(n, j, x, terms=35) / sp.gamma(j + 1)
     return ((-x / 4.0) ** n) * (int2 - int1) / (sp.gamma(n + 1) ** 2.0)
 
 
@@ -44,8 +44,7 @@ def modified(z, k_perp, k_para, om_pc, ring_j, terms):
     x = -2 * k_perp ** 2.0
     ksq = k_perp ** 2.0 + k_para ** 2.0
     # compute hyper-geometric
-    print([s for s in range(1 - terms, terms)])
-
+    # print([s for s in range(1 - terms, terms)])
     return 1.0 - om_pc ** 2.0 / ksq * sum([
         (para_perp_integral(n=s, j=ring_j, x=x) * 0.5 * pd.Zprime((z - s) / k_para) -
          perp_integral(n=s, j=ring_j, x=x) * s / k_para * pd.Z((z - s) / k_para))
@@ -55,9 +54,13 @@ def modified(z, k_perp, k_para, om_pc, ring_j, terms):
 def analytic_jacobian(z, k_perp, k_para, om_pc, ring_j, terms):
     x = -2 * k_perp ** 2.0
     ksq = k_perp ** 2.0 + k_para ** 2.0
+    # return -om_pc ** 2.0 / ksq * sum([
+    #     perp_integral(n=s, j=ring_j, x=x) * (0.5 * pd.Zdoubleprime((z - s) / k_para) / k_para -
+    #                                          s / k_para * pd.Zprime((z - s) / (k_para ** 2.0)))
+    #     for s in range(1 - terms, terms)])
     return -om_pc ** 2.0 / ksq * sum([
-        perp_integral(n=s, j=ring_j, x=x) * (0.5 * pd.Zdoubleprime((z - s) / k_para) / k_para -
-                                             s / k_para * pd.Zprime((z - s) / (k_para ** 2.0)))
+        (para_perp_integral(n=s, j=ring_j, x=x) * 0.5 * pd.Zdoubleprime((z - s) / k_para) / k_para -
+         perp_integral(n=s, j=ring_j, x=x) * s / k_para * pd.Zprime((z - s) / k_para) / k_para)
         for s in range(1 - terms, terms)])
 
 
@@ -86,43 +89,36 @@ def jacobian_fsolve(om, wave, om_pc, ring_j, terms):
 
 # Define complex plane
 om_pc = 10
-ring_j = 3 * np.pi
+ring_j = 6
 angle = 85 * np.pi / 180.0
-k_perp = 0.888
+k_perp = 1.2
 k_para = k_perp / np.tan(angle)
 print(k_para), print(k_perp)
 
-z_r = np.linspace(-1.5, 3.5, num=500)
-z_i = np.linspace(-0.2, 0.6, num=500)
+z_r = np.linspace(-0.5, 1.5, num=500)
+z_i = np.linspace(0.4, 0.45, num=500)
 z = (np.tensordot(z_r, np.ones_like(z_i), axes=0) +
      1.0j * np.tensordot(np.ones_like(z_r), z_i, axes=0))
 X, Y = np.tensordot(z_r, np.ones_like(z_i), axes=0), np.tensordot(np.ones_like(z_r), z_i, axes=0)
 
-# func = dispersion(z, k_perp, k_para, 0, terms=20)
 func = modified(z, k_perp, k_para, om_pc=om_pc, ring_j=ring_j, terms=5)
-cb = np.linspace(-1, 1, num=100)
-# cb = np.linspace(0, np.amax(np.real(func)), num=100)
-# func2 = standard(z, k_perp, k_para, terms=10)
+re = np.real(func)
+im = np.imag(func)
 
 plt.figure()
-# plt.contourf(X, Y, np.real(func), cb, extend='both')
+cb = np.linspace(-1, 1, num=100)
+plt.contourf(X, Y, im, cb, extend='both')
+
+plt.figure()
 plt.contour(X, Y, np.real(func), 0, colors='g')
 plt.contour(X, Y, np.imag(func), 0, colors='r')
-plt.grid(True)
+plt.grid(True), plt.show()
 
-# plt.figure()
-# # plt.contourf(X, Y, np.real(func2), cb, extend='both')
-# plt.contour(X, Y, np.real(func2), 0, colors='g')
-# plt.contour(X, Y, np.imag(func2), 0, colors='r')
-# plt.grid(True)
-
-plt.show()
 
 # Root solve, analysis at 45 degrees to field
-num = 75
-
-angle = 45 * np.pi / 180.0
-k_perp = np.linspace(0.05, 0.95, num=num)
+num = 750
+angle = 85 * np.pi / 180.0
+k_perp = np.linspace(0.1, 1.2, num=num)
 k_para = k_perp / np.tan(angle)
 
 wave = np.sqrt(k_para ** 2.0 + k_perp ** 2.0)
@@ -135,77 +131,45 @@ guess_r1, guess_i1 = np.zeros_like(k_para), np.zeros_like(k_para)
 guess_r2, guess_i2 = np.zeros_like(k_para), np.zeros_like(k_para)
 guess_r3, guess_i3 = np.zeros_like(k_para), np.zeros_like(k_para)
 
-# 80 degrees
-guess_r1[k_perp <= 0.22] = 1.26
-guess_r1[k_perp >= 0.22] = 1.38
-guess_r1[k_perp >= 0.3] = 1.4
-guess_r1[k_perp >= 0.4] = 1.5
-guess_r1[k_perp >= 0.5] = 1.6
-guess_r1[k_perp >= 0.6] = 1.7
-guess_r1[k_perp >= 0.8] = 1.8
-
-guess_i1[k_perp <= 0.2] = -0.01
-guess_i1[k_perp >= 0.2] = -0.01
-guess_i1[k_perp >= 0.4] = -0.25
-guess_i1[k_perp >= 0.5] = -0.3
-guess_i1[k_perp >= 0.6] = -0.5
-guess_i1[k_perp >= 0.8] = -1
-
-guess_r2[k_perp <= 0.2] = 0.37
-guess_r2[k_perp >= 0.2] = 0.4
-guess_r2[k_perp >= 0.4] = 0.6
-guess_r2[k_perp >= 0.7] = 0.7
-guess_r2[k_perp >= 0.8] = 0.8
-# guess_r2[k_perp >= 0.9] = 0.7
-
-guess_i2[k_perp <= 0.2] = -0.0001
-guess_i2[k_perp >= 0.2] = -0.1
-guess_i2[k_perp >= 0.4] = -0.45
-guess_i2[k_perp >= 0.6] = -0.6
-guess_i2[k_perp >= 0.7] = -0.9
-guess_i2[k_perp >= 0.8] = -1.2
-# guess_i2[k_perp >= 1.4] = -0.4
-
-guess_r3[k_perp <= 0.2] = 2.01
-guess_r3[k_perp >= 0.2] = 2.05
-guess_r3[k_perp >= 0.2] = 2.2
-guess_r3[k_perp >= 0.9] = 2.5
-
-guess_i3[k_perp <= 0.2] = -0.15
-guess_i3[k_perp >= 0.2] = -0.3
-guess_i3[k_perp >= 0.5] = -0.5
-guess_i3[k_perp >= 0.9] = -0.7
-guess_i3[k_perp >= 1] = -1.2
+# 85 degrees
+guess_r1[0] = 1.95
+guess_i1[0] = -0.01
+guess_r2[0] = 0.983
+guess_i2[0] = -0.0126
+guess_r3[0] = 0.983
+guess_i3[0] = -0.0126
 
 for idx in range(k_para.shape[0]):
-    sol = opt.root(dispersion_fsolve, x0=np.array([guess_r1[idx], guess_i1[idx]]),
-                   args=(waves[:, idx], 0, 10), jac=jacobian_fsolve)
-    mode1[idx] = sol.x[0] + 1j * sol.x[1]
-    sol = opt.root(dispersion_fsolve, x0=np.array([guess_r2[idx], guess_i2[idx]]),
-                   args=(waves[:, idx], 0, 10), jac=jacobian_fsolve)
-    mode2[idx] = sol.x[0] + 1j * sol.x[1]
-    # sol = opt.root(dispersion_fsolve, x0=np.array([guess_r3[idx], guess_i3[idx]]),
-    #                args=(waves[:, idx], 0, 10), jac=jacobian_fsolve)
-    # mode3[idx] = sol.x[0] + 1j * sol.x[1]
-
-# Scale solution to frequency
-# mode1_om = np.multiply(k_para, mode1)
-# mode2_om = np.multiply(k_para, mode2)
-mode1_om = np.append([1.26], mode1)
-wave = np.append([0], wave)
-mode2_om = np.append([0.4], mode2)
-mode3_om = np.append([2], mode3)
+    sol1 = opt.root(dispersion_fsolve, x0=np.array([guess_r1[idx], guess_i1[idx]]),
+                    args=(waves[:, idx], om_pc, ring_j, 5), jac=jacobian_fsolve)
+    sol2 = opt.root(dispersion_fsolve, x0=np.array([guess_r2[idx], guess_i2[idx]]),
+                    args=(waves[:, idx], om_pc, ring_j, 5), jac=jacobian_fsolve)
+    sol3 = opt.root(dispersion_fsolve, x0=np.array([guess_r3[idx], guess_i3[idx]]),
+                    args=(waves[:, idx], om_pc, ring_j, 5), jac=jacobian_fsolve)
+    # new guess
+    if idx < k_para.shape[0] - 1:
+        guess_r1[idx + 1], guess_i1[idx + 1] = sol1.x[0], sol1.x[1]
+        guess_r2[idx + 1], guess_i2[idx + 1] = sol2.x[0], sol2.x[1]
+        guess_r3[idx + 1], guess_i3[idx + 1] = sol3.x[0], sol3.x[1]
+        if 0.786 <= k_perp[idx] < 0.79:  # a little nudge at the branch point
+            guess_i2[idx+1] += 0.05
+            guess_i3[idx+1] -= 0.05
+    # record solutions
+    mode1[idx] = sol1.x[0] + 1j * sol1.x[1]
+    mode2[idx] = sol2.x[0] + 1j * sol2.x[1]
+    mode3[idx] = sol3.x[0] + 1j * sol3.x[1]
 
 plt.figure()
-plt.plot(wave, np.real(mode1_om), 'k')
-plt.plot(wave, np.imag(mode1_om), 'k--')
-plt.plot(wave, np.real(mode2_om), 'g')
-plt.plot(wave, np.imag(mode2_om), 'g--')
-# plt.plot(wave, np.real(mode3_om), 'r')
-# plt.plot(wave, np.imag(mode3_om), 'r--')
+wave = k_perp
+plt.plot(wave, np.real(mode1), 'k')
+plt.plot(wave, np.imag(mode1), 'k--')
+plt.plot(wave, np.real(mode2), 'g')
+plt.plot(wave, np.imag(mode2), 'g--')
+plt.plot(wave, np.real(mode3), 'r')
+plt.plot(wave, np.imag(mode3), 'r--')
 plt.axis([wave[0], wave[-1], -1.3, 2.4])
 plt.xlabel(r'Wavenumber $\sqrt{k_\perp^2+k_\parallel^2}$'), plt.ylabel(r'Frequency $\omega/\omega_c$')
-plt.grid(True), plt.title(r'Angle $\theta=45^\circ$'), plt.tight_layout()
+plt.grid(True), plt.title(r'Angle $\theta=85^\circ$, Ring parameter $\gamma = 6$'), plt.tight_layout()
 plt.show()
 
 quit()
