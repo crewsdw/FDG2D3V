@@ -3,14 +3,14 @@ import cupy as cp
 
 class SpaceScalar:
     def __init__(self, resolutions):
-        self.res_x, res_y = resolutions
+        self.res_x, self.res_y = resolutions
         self.arr_nodal, self.arr_spectral = None, None
 
     def fourier_transform(self):
-        self.arr_spectral = cp.fft.rfft2(self.arr_nodal, norm='forward')
+        self.arr_spectral = cp.fft.fftshift(cp.fft.rfft2(self.arr_nodal, norm='forward'), axes=0)
 
     def inverse_fourier_transform(self):
-        self.arr_nodal = cp.fft.irfft2(self.arr_spectral, norm='forward')
+        self.arr_nodal = cp.fft.irfft2(cp.fft.fftshift(self.arr_spectral, axes=0), norm='forward')
 
     def integrate(self, grid):
         arr_add = cp.append(self.arr_nodal, self.arr_nodal[0])
@@ -24,20 +24,29 @@ class SpaceScalar:
 
 class SpaceVector:
     def __init__(self, resolutions):
-        self.res_x, res_y = resolutions
-        self.arr_nodal_x, self.arr_spectral_x = None, None
-        self.arr_nodal_z, self.arr_spectral_z = None, None
+        self.res_x, self.res_y = resolutions
+        self.arr_nodal, self.arr_spectral = None, None
+        self.arr_nodal = cp.zeros((2, resolutions[0], resolutions[1]))
+        self.init_spectral_array()
+
+    def init_spectral_array(self):
+        if self.arr_spectral is not None:
+            return
+        else:
+            x_spec = cp.fft.rfft2(self.arr_nodal[0, :, :])
+            y_spec = cp.fft.rfft2(self.arr_nodal[1, :, :])
+            self.arr_spectral = cp.array([x_spec, y_spec])
 
     def fourier_transform(self):
-        self.arr_spectral_x = cp.fft.rfft2(self.arr_nodal_x, norm='forward')
-        self.arr_spectral_z = cp.fft.rfft2(self.arr_nodal_z, norm='forward')
+        self.arr_spectral[0, :, :] = cp.fft.fftshift(cp.fft.rfft2(self.arr_nodal[0, :, :], norm='forward'), axes=0)
+        self.arr_spectral[1, :, :] = cp.fft.fftshift(cp.fft.rfft2(self.arr_nodal[1, :, :], norm='forward'), axes=0)
 
     def inverse_fourier_transform(self):
-        self.arr_nodal_x = cp.fft.irfft2(self.arr_spectral_x, norm='forward')
-        self.arr_nodal_z = cp.fft.irfft2(self.arr_spectral_z, norm='forward')
+        self.arr_nodal[0, :, :] = cp.fft.irfft2(cp.fft.fftshift(self.arr_spectral[0, :, :], axes=0), norm='forward')
+        self.arr_nodal[1, :, :] = cp.fft.irfft2(cp.fft.fftshift(self.arr_spectral[1, :, :], axes=0), norm='forward')
 
     def spectral_magnitude_squared(self):
-        return self.arr_spectral_x ** 2.0 + self.arr_spectral_z ** 2.0
+        return self.arr_spectral[0, :, :] ** 2.0 + self.arr_spectral[1, :, :] ** 2.0
 
     def integrate_energy(self):
         return cp.sum(self.spectral_magnitude_squared())
@@ -54,12 +63,12 @@ class Distribution:
         self.second_moment = SpaceScalar(resolutions=[self.x_res, self.z_res])
 
     def fourier_transform(self):
-        self.arr = cp.fft.rfft2(self.arr_nodal, axes=(0, 1), norm='forward')
-        print(self.arr.shape)
+        self.arr = cp.fft.fftshift(cp.fft.rfft2(self.arr_nodal, axes=(0, 1), norm='forward'), axes=0)
+        # print(self.arr.shape)
 
     def inverse_fourier_transform(self):
-        self.arr_nodal = cp.fft.irfft2(self.arr, axes=(0, 1), norm='forward')
-        print(self.arr_nodal.shape)
+        self.arr_nodal = cp.fft.irfft2(cp.fft.fftshift(self.arr, axes=0), axes=(0, 1), norm='forward')
+        # print(self.arr_nodal.shape)
 
     def compute_zero_moment(self, grid):
         # self.inverse_fourier_transform()
@@ -111,8 +120,8 @@ class Distribution:
         sin_x = cp.sin(grid.x.fundamental * grid.x.device_arr)
         sin_z = cp.sin(grid.z.fundamental * grid.z.device_arr)
 
-        perturbation = cp.multiply((sin_x[:, None, None, None, None, None, None, None] +
-                                    sin_z[:, None, None, None, None, None, None, None]), ring_distribution)
+        perturbation = cp.multiply((sin_x[:, None, None, None, None, None, None, None] *
+                                    sin_z[None, :, None, None, None, None, None, None]), ring_distribution)
 
         self.arr_nodal = ring_distribution + 1.0e-3 * perturbation
 

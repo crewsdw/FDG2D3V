@@ -7,7 +7,7 @@ import scipy.special as sp
 class SpaceGrid:
     """ In this scheme, the spatial grid is uniform and transforms are accomplished by DFT """
 
-    def __init__(self, low, high, elements):
+    def __init__(self, low, high, elements, real_freqs=False):
         # grid limits and elements
         self.low, self.high = low, high
         self.elements = elements
@@ -24,15 +24,20 @@ class SpaceGrid:
         self.create_grid()
 
         # spectral properties
-        self.modes = int(elements // 2.0 + 1)  # Nyquist frequency
         self.fundamental = 2.0 * np.pi / self.length
-        # self.wavenumbers = self.fundamental * np.arange(-self.modes, self.modes)
-        self.wavenumbers = self.fundamental * np.arange(self.modes)
+        if real_freqs:
+            self.modes = int(elements // 2.0 + 1)  # Nyquist frequency
+            self.wavenumbers = self.fundamental * np.arange(self.modes)
+            # de-aliasing parameters
+            self.zero_idx = 0
+            self.pad_width = int((1 * self.modes) // 3 + 1)
+        else:
+            self.modes = int(elements // 2.0)
+            self.wavenumbers = self.fundamental * np.arange(-self.modes, self.modes)
+            self.zero_idx = self.modes
+            self.pad_width = int((1 * self.modes) // 3 + 1)
+        # send to device
         self.device_wavenumbers = cp.array(self.wavenumbers)
-
-        # de-aliasing parameters
-        self.zero_idx = 0  # int(self.modes)
-        self.pad_width = int((1 * self.modes) // 3 + 1)
 
     def create_grid(self):
         """ Build evenly spaced grid, assumed periodic """
@@ -116,7 +121,7 @@ class PhaseSpace:
     def __init__(self, lows, highs, elements, order, om_pc):
         # Grids
         self.x = SpaceGrid(low=lows[0], high=highs[0], elements=elements[0])
-        self.z = SpaceGrid(low=lows[1], high=highs[1], elements=elements[1])
+        self.z = SpaceGrid(low=lows[1], high=highs[1], elements=elements[1], real_freqs=True)
         self.u = VelocityGrid(low=lows[2], high=highs[2], elements=elements[2], order=order)
         self.v = VelocityGrid(low=lows[3], high=highs[3], elements=elements[3], order=order)
         self.w = VelocityGrid(low=lows[4], high=highs[4], elements=elements[4], order=order)
