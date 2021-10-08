@@ -172,7 +172,7 @@ plt.plot(wave, np.imag(mode2), 'g--')
 plt.plot(wave, np.real(mode3), 'r')
 plt.plot(wave, np.imag(mode3), 'r--')
 plt.axis([wave[0], wave[-1], -1.3, 2.4])
-plt.xlabel(r'Wavenumber $\sqrt{k_\perp^2+k_\parallel^2}$'), plt.ylabel(r'Frequency $\omega/\omega_c$')
+plt.xlabel(r'Wavenumber $k$'), plt.ylabel(r'Frequency $\omega/\omega_c$')
 plt.grid(True), plt.title(r'Angle $\theta=85^\circ$, Ring parameter $\gamma = 6$'), plt.tight_layout()
 plt.show()
 
