@@ -6,7 +6,8 @@ def Z_uniform(z):
     out = np.zeros_like(z) + 0j
     z_large = z[np.abs(z) >= 15]
     z_small = z[np.abs(z) < 15]
-    out[np.abs(z) < 15] = 1j * np.sqrt(np.pi) * np.exp(-z_small ** 2.0) * (1.0 + sp.erf(1j * z_small))
+    # out[np.abs(z) < 15] = 1j * np.sqrt(np.pi) * np.exp(-z_small ** 2.0) * (1.0 + sp.erf(1j * z_small))
+    out[np.abs(z) < 15] = np.sqrt(np.pi) * 1j * sp.wofz(z_small)
     out[np.abs(z) >= 15] = Z_asymptotic(z_large)
     return out
 
@@ -28,7 +29,7 @@ def Z_asymptotic_no_exp(z):
 def a_cf(z, n):
     n -= 1
     if n == 0:
-        return z
+        return -z
     else:
         return 0.5 * n * (2 * n - 1)
 
@@ -46,8 +47,8 @@ def Z_continued_fraction(z, terms):
 
     for n in range(1, terms):
         a, b = a_cf(z, n), b_cf(z, n)
-        A[n + 1, :] = a * A[n - 1, :] + b * A[n, :]
-        B[n + 1, :] = a * B[n - 1, :] + b * B[n, :]
+        A[n + 1, :] = -1.0 * a * A[n - 1, :] + b * A[n, :]
+        B[n + 1, :] = -1.0 * a * B[n - 1, :] + b * B[n, :]
 
     return np.divide(A[-1, :], B[-1, :])
 
@@ -59,14 +60,14 @@ def Z(z):
         # x, y = np.real(z), np.imag(z)
 
         out[np.imag(z) < y_cutoff] = Z_uniform(z[np.imag(z) < y_cutoff])
-        out[np.imag(z) >= y_cutoff] = Z_continued_fraction(z[np.imag(z) >= y_cutoff], terms=3)
+        out[np.imag(z) >= y_cutoff] = Z_continued_fraction(z[np.imag(z) >= y_cutoff], terms=10)
         return out
     if type(z) is np.complex128:
         z = np.array([z, 0+0j])
         if np.imag(z[0]) < y_cutoff:
             out = Z_uniform(z)
         else:
-            out = Z_continued_fraction(z, terms=3)
+            out = Z_continued_fraction(z, terms=10)
         return out[0]
 
 

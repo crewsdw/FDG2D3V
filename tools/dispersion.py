@@ -30,13 +30,13 @@ def hyp2f2(n, j, x, terms):
 def para_perp_integral(n, j, x):
     n = abs(n)
     return sp.gamma(n + j + 1) / (sp.gamma(n + 1) ** 2.0 * sp.gamma(j + 1)) * (((-x / 4.0) ** n) *
-                                                                               hyp2f2(n, j, x, terms=35))
+                                                                               hyp2f2(n, j, x, terms=20))
 
 
 def perp_integral(n, j, x):
     n = abs(n)
-    int1 = sp.gamma(n + j) * hyp2f2(n, j - 1, x, terms=35) / sp.gamma(j)
-    int2 = sp.gamma(n + j + 1) * hyp2f2(n, j, x, terms=35) / sp.gamma(j + 1)
+    int1 = sp.gamma(n + j) * hyp2f2(n, j - 1, x, terms=20) / sp.gamma(j)
+    int2 = sp.gamma(n + j + 1) * hyp2f2(n, j, x, terms=20) / sp.gamma(j + 1)
     return ((-x / 4.0) ** n) * (int2 - int1) / (sp.gamma(n + 1) ** 2.0)
 
 
@@ -91,17 +91,17 @@ def jacobian_fsolve(om, wave, om_pc, ring_j, terms):
 om_pc = 10
 ring_j = 6
 angle = 85 * np.pi / 180.0
-k_perp = 1.2
+k_perp = 0.925
 k_para = k_perp / np.tan(angle)
 print(k_para), print(k_perp)
 
-z_r = np.linspace(-0.5, 1.5, num=500)
-z_i = np.linspace(0.4, 0.45, num=500)
+z_r = np.linspace(-1.5, 3.5, num=500)
+z_i = np.linspace(0, 2, num=500)
 z = (np.tensordot(z_r, np.ones_like(z_i), axes=0) +
      1.0j * np.tensordot(np.ones_like(z_r), z_i, axes=0))
 X, Y = np.tensordot(z_r, np.ones_like(z_i), axes=0), np.tensordot(np.ones_like(z_r), z_i, axes=0)
 
-func = modified(z, k_perp, k_para, om_pc=om_pc, ring_j=ring_j, terms=5)
+func = modified(z, k_perp, k_para, om_pc=om_pc, ring_j=ring_j, terms=10)
 re = np.real(func)
 im = np.imag(func)
 
@@ -118,7 +118,7 @@ plt.grid(True), plt.show()
 # Root solve, analysis at 45 degrees to field
 num = 750
 angle = 85 * np.pi / 180.0
-k_perp = np.linspace(0.1, 1.2, num=num)
+k_perp = np.linspace(0.1, 1.6, num=num)
 k_para = k_perp / np.tan(angle)
 
 wave = np.sqrt(k_para ** 2.0 + k_perp ** 2.0)
@@ -139,21 +139,25 @@ guess_i2[0] = -0.0126
 guess_r3[0] = 0.983
 guess_i3[0] = -0.0126
 
+terms = 12
 for idx in range(k_para.shape[0]):
     sol1 = opt.root(dispersion_fsolve, x0=np.array([guess_r1[idx], guess_i1[idx]]),
-                    args=(waves[:, idx], om_pc, ring_j, 5), jac=jacobian_fsolve)
+                    args=(waves[:, idx], om_pc, ring_j, terms), jac=jacobian_fsolve)
     sol2 = opt.root(dispersion_fsolve, x0=np.array([guess_r2[idx], guess_i2[idx]]),
-                    args=(waves[:, idx], om_pc, ring_j, 5), jac=jacobian_fsolve)
+                    args=(waves[:, idx], om_pc, ring_j, terms), jac=jacobian_fsolve)
     sol3 = opt.root(dispersion_fsolve, x0=np.array([guess_r3[idx], guess_i3[idx]]),
-                    args=(waves[:, idx], om_pc, ring_j, 5), jac=jacobian_fsolve)
+                    args=(waves[:, idx], om_pc, ring_j, terms), jac=jacobian_fsolve)
     # new guess
     if idx < k_para.shape[0] - 1:
         guess_r1[idx + 1], guess_i1[idx + 1] = sol1.x[0], sol1.x[1]
         guess_r2[idx + 1], guess_i2[idx + 1] = sol2.x[0], sol2.x[1]
         guess_r3[idx + 1], guess_i3[idx + 1] = sol3.x[0], sol3.x[1]
-        if 0.786 <= k_perp[idx] < 0.79:  # a little nudge at the branch point
-            guess_i2[idx+1] += 0.05
-            guess_i3[idx+1] -= 0.05
+        if 0.82 <= k_perp[idx] < 0.83:  # a little nudge at the branch point
+            guess_i2[idx+1] += 0.025
+            guess_i3[idx+1] -= 0.025
+        if 0.905 <= k_perp[idx] < 0.92:  # a little nudge at the branch point
+            guess_r2[idx + 1] += 0.01
+            guess_r3[idx + 1] += 0.01
     # record solutions
     mode1[idx] = sol1.x[0] + 1j * sol1.x[1]
     mode2[idx] = sol2.x[0] + 1j * sol2.x[1]
