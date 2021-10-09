@@ -11,8 +11,8 @@ def basis_product(flux, basis_arr, axis, permutation):
 class DGFlux:
     def __init__(self, resolutions, order, grid, om_pc):
         self.x_ele, self.z_ele, self.u_res, self.v_res, self.w_res = resolutions
-        self.x_res = grid.x.wavenumbers.shape
-        self.z_res = grid.z.wavenumbers.shape
+        self.x_res = grid.x.wavenumbers.shape[0]
+        self.z_res = grid.z.wavenumbers.shape[0]
         self.order = order
 
         # permutations after tensor-dot with basis array
@@ -126,7 +126,7 @@ class DGFlux:
         """ Computes the semi-discrete equation """
         # Do elliptic problem
         # t0 = timer.time()
-        elliptic.poisson_solve(distribution=distribution, grid=grid, invert=False)
+        elliptic.poisson(distribution=distribution, grid=grid, invert=False)
         # t1 = timer.time()
         # # Compute the flux
         self.compute_flux(distribution=distribution, elliptic=elliptic, grid=grid)
@@ -143,10 +143,14 @@ class DGFlux:
         elliptic.field.inverse_fourier_transform()
         distribution.inverse_fourier_transform()
         # nodal flux
-        self.field_flux_u.arr_nodal = cp.multiply(elliptic.field[0, :, :, None, None, None, None, None, None] *
-                                                  distribution.arr_nodal)
-        self.field_flux_w.arr_nodal = cp.multiply(elliptic.field[1, :, :, None, None, None, None, None, None] *
-                                                  distribution.arr_nodal)
+        self.field_flux_u.arr_nodal = cp.multiply(
+            elliptic.field.arr_nodal[0, :, :, None, None, None, None, None, None],
+            distribution.arr_nodal
+        )
+        self.field_flux_w.arr_nodal = cp.multiply(
+            elliptic.field.arr_nodal[1, :, :, None, None, None, None, None, None],
+            distribution.arr_nodal
+        )
         # inverse transform
         self.field_flux_u.fourier_transform()
         self.field_flux_w.fourier_transform()

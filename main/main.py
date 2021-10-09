@@ -9,7 +9,7 @@ import fluxes as fx
 import timestep as ts
 
 # elements and order
-elements, order = [6, 6, 12, 12, 12], 8
+elements, order = [6, 6, 18, 18, 18], 8
 
 # parameters
 om_pc = 1
@@ -22,7 +22,7 @@ length_x = 2.0 * np.pi / k_perp
 length_z = 2.0 * np.pi / k_para
 
 # grid arrays
-lows = np.array([-length_x / 2.0, -length_z / 2.0, -4, -4, -4])
+lows = np.array([-length_x / 2.0, -length_z / 2.0, -6.5, -6.5, -6.5])
 highs = -1.0 * lows
 
 # grid object
@@ -49,18 +49,18 @@ flux = fx.DGFlux(resolutions=elements, order=order, grid=grid, om_pc=om_pc)
 flux.initialize_zero_pad(grid=grid)
 
 # Set up timestepper
-dt = 1.0e-5
-stop_time = 1.0e-3
+dt = 2.5e-4
+stop_time = 5.0e-2
 steps = int(stop_time // dt) + 1
 stepper = ts.Stepper(dt=dt, resolutions=elements, order=order, steps=steps, flux=flux)
 stepper.main_loop(distribution=distribution, elliptic=elliptic, grid=grid)
 
 distribution.zero_moment.inverse_fourier_transform()
 plotter.scalar_plot(scalar=distribution.zero_moment)
-plotter.scalar_plot(scalar=elliptic.field)
+plotter.vector_plot(vector=elliptic.field)
 
 plotter.time_series_plot(time_in=stepper.time_array, series_in=stepper.field_energy,
-                         y_axis='Electric energy', log=True, give_rate=False)
+                         y_axis='Electric energy', log=False, give_rate=False)
 plotter.time_series_plot(time_in=stepper.time_array, series_in=stepper.thermal_energy,
                          y_axis='Thermal energy', log=False)
 plotter.time_series_plot(time_in=stepper.time_array, series_in=stepper.density_array,

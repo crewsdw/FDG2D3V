@@ -127,8 +127,9 @@ class PhaseSpace:
         self.w = VelocityGrid(low=lows[4], high=highs[4], elements=elements[4], order=order)
 
         # Square quantities
-        self.v_mag_sq = (self.u.device_arr[:, :, None, None] ** 2.0 + self.v.device_arr[None, None, :, :] ** 2.0 +
-                         self.w.device_arr[:, :, None, None] ** 2.0)
+        self.v_mag_sq = (self.u.device_arr[:, :, None, None, None, None] ** 2.0 +
+                         self.v.device_arr[None, None, :, :, None, None] ** 2.0 +
+                         self.w.device_arr[None, None, None, None, :, :] ** 2.0)
         self.k_sq = (self.x.device_wavenumbers[:, None] ** 2.0 + self.z.device_wavenumbers[None, :] ** 2.0)
 
         # Parameters

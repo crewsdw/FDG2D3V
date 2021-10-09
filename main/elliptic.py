@@ -22,5 +22,5 @@ class Elliptic:
             self.potential.inverse_fourier_transform()
             self.field.inverse_fourier_transform()
 
-    def compute_field_energy(self):
-        return self.field.integrate_energy()
+    def compute_field_energy(self, grid):
+        return self.field.integrate_energy(grid=grid)
