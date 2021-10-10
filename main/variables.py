@@ -15,6 +15,7 @@ class SpaceScalar:
     def integrate(self, grid):
         # arr_add = cp.append(self.arr_nodal, self.arr_nodal[0])
         arr_add = cp.zeros((self.res_x + 1, self.res_y + 1))
+        arr_add[:-1, :-1] = self.arr_nodal
         arr_add[-1, :-1] = self.arr_nodal[0, :]
         arr_add[:-1, -1] = self.arr_nodal[:, 0]
         arr_add[-1, -1] = self.arr_nodal[0, 0]
@@ -143,10 +144,12 @@ class Distribution:
         sin_x = cp.sin(grid.x.fundamental * grid.x.device_arr)
         sin_z = cp.sin(grid.z.fundamental * grid.z.device_arr)
 
-        perturbation = cp.multiply((sin_x[:, None, None, None, None, None, None, None] +
-                                    sin_z[None, :, None, None, None, None, None, None]), ring_distribution)
+        # perturbation = cp.multiply((sin_x[:, None, None, None, None, None, None, None] +
+        #                             sin_z[None, :, None, None, None, None, None, None]), ring_distribution)
+        eigenvalue = -4.13247520e-01 + 0j
+        perturbation = grid.eigenfunction(1, 0, 1, eigenvalue=eigenvalue, parity=True)
 
-        self.arr_nodal = ring_distribution + 5.0e-2 * perturbation
+        self.arr_nodal = ring_distribution + 1.0e-1 * perturbation
 
 
 def trapz(f, dx, dz):

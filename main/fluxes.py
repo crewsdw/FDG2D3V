@@ -177,7 +177,7 @@ class DGFlux:
         return -1j * (cp.multiply(grid.x.device_wavenumbers[:, None, None, None, None, None, None, None],
                                   cp.einsum('axb,ijabcdef->ijaxcdef', grid.u.translation_matrix, distribution.arr)) +
                       cp.multiply(grid.z.device_wavenumbers[None, :, None, None, None, None, None, None],
-                                  cp.einsum('cxd,ijabcdef->ijabcxef', grid.w.translation_matrix, distribution.arr)))
+                                  cp.einsum('exf,ijabcdef->ijabcdex', grid.w.translation_matrix, distribution.arr)))
 
     def numerical_flux_lgl(self, flux, grid, dim):
         # Allocate

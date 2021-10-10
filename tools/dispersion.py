@@ -29,14 +29,17 @@ def hyp2f2(n, j, x, terms):
 
 def para_perp_integral(n, j, x):
     n = abs(n)
-    return sp.gamma(n + j + 1) / (sp.gamma(n + 1) ** 2.0 * sp.gamma(j + 1)) * (((-x / 4.0) ** n) *
-                                                                               hyp2f2(n, j, x, terms=20))
+    return sp.gamma(n + j + 1) / (sp.gamma(n + 1) ** 2.0) * (((-x / 4.0) ** n) *
+                                                             hyp2f2(n, j, x, terms=20)) * sp.rgamma(j + 1)
 
 
 def perp_integral(n, j, x):
     n = abs(n)
-    int1 = sp.gamma(n + j) * hyp2f2(n, j - 1, x, terms=20) / sp.gamma(j)
-    int2 = sp.gamma(n + j + 1) * hyp2f2(n, j, x, terms=20) / sp.gamma(j + 1)
+    if j > 0:
+        int1 = sp.gamma(n + j) * hyp2f2(n, j - 1, x, terms=20) * sp.rgamma(j)
+    else:
+        int1 = 0
+    int2 = sp.gamma(n + j + 1) * hyp2f2(n, j, x, terms=20) * sp.rgamma(j + 1)
     return ((-x / 4.0) ** n) * (int2 - int1) / (sp.gamma(n + 1) ** 2.0)
 
 
@@ -88,15 +91,15 @@ def jacobian_fsolve(om, wave, om_pc, ring_j, terms):
 
 
 # Define complex plane
-om_pc = 10
-ring_j = 6
-angle = 85 * np.pi / 180.0
-k_perp = 0.925
+om_pc = 1
+ring_j = 0
+angle = 45 * np.pi / 180.0
+k_perp = 0.1
 k_para = k_perp / np.tan(angle)
 print(k_para), print(k_perp)
 
 z_r = np.linspace(-1.5, 3.5, num=500)
-z_i = np.linspace(0, 2, num=500)
+z_i = np.linspace(-0.5, 0.5, num=500)
 z = (np.tensordot(z_r, np.ones_like(z_i), axes=0) +
      1.0j * np.tensordot(np.ones_like(z_r), z_i, axes=0))
 X, Y = np.tensordot(z_r, np.ones_like(z_i), axes=0), np.tensordot(np.ones_like(z_r), z_i, axes=0)
@@ -114,6 +117,12 @@ plt.contour(X, Y, np.real(func), 0, colors='g')
 plt.contour(X, Y, np.imag(func), 0, colors='r')
 plt.grid(True), plt.show()
 
+# Root analysis: single root
+guess_r, guess_i = 0.413, 0
+solution = opt.root(dispersion_fsolve, x0=np.array([guess_r, guess_i]),
+                    args=([k_perp, k_para], om_pc, ring_j, 10), jac=jacobian_fsolve)
+print(solution.x)
+quit()
 
 # Root solve, analysis at 45 degrees to field
 num = 750
@@ -153,8 +162,8 @@ for idx in range(k_para.shape[0]):
         guess_r2[idx + 1], guess_i2[idx + 1] = sol2.x[0], sol2.x[1]
         guess_r3[idx + 1], guess_i3[idx + 1] = sol3.x[0], sol3.x[1]
         if 0.82 <= k_perp[idx] < 0.83:  # a little nudge at the branch point
-            guess_i2[idx+1] += 0.025
-            guess_i3[idx+1] -= 0.025
+            guess_i2[idx + 1] += 0.025
+            guess_i3[idx + 1] -= 0.025
         if 0.905 <= k_perp[idx] < 0.92:  # a little nudge at the branch point
             guess_r2[idx + 1] += 0.01
             guess_r3[idx + 1] += 0.01

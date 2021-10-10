@@ -47,6 +47,8 @@ class Stepper:
 
     def main_loop(self, distribution, elliptic, grid):
         print('Beginning main loop')
+        dt_estimated = self.estimate_dt(grid=grid)
+        print(dt_estimated)
         t0 = timer.time()
         for i in range(self.steps):
             # self.next_time = self.time + self.step

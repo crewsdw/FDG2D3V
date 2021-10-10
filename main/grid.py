@@ -153,3 +153,61 @@ class PhaseSpace:
         maxwellian = para_factor * np.exp(-0.5 * w ** 2.0)
 
         return cp.asarray(np.multiply(ring, maxwellian))
+
+    def eigenfunction(self, perp_vt, ring_parameter, para_vt, eigenvalue, parity):
+        # Cylindrical coordinates grid set-up, using wave-number x.k1
+        iu, iv, iw = np.ones_like(self.u.arr), np.ones_like(self.v.arr), np.ones_like(self.w.arr)
+        u = np.tensordot(self.u.arr, np.tensordot(iv, iw, axes=0), axes=0)
+        v = np.tensordot(iu, np.tensordot(self.v.arr, iw, axes=0), axes=0)
+        w = np.tensordot(iu, np.tensordot(iv, self.w.arr, axes=0), axes=0)
+        r = np.sqrt(u ** 2.0 + v ** 2.0)
+        phi = np.arctan2(v, u)
+
+        # -k * v / om_c in units of debye length
+        beta = - self.x.fundamental * r * self.om_pc
+
+        # radial gradient of distribution
+        vt = perp_vt
+        x = 0.5 * (r / vt) ** 2.0
+        df_dv_perp = ((self.ring_distribution(perp_vt, ring_parameter - 1, para_vt) -
+                      self.ring_distribution(perp_vt, ring_parameter, para_vt)) / (perp_vt ** 2.0)).get()
+
+        df_dv_para = np.multiply(-w / para_vt ** 2.0, self.ring_distribution(perp_vt, ring_parameter, para_vt).get())
+
+        perp_series = 0 + 0j
+        para_series = 0 + 0j
+        terms_n = 10
+        if parity:
+            om1 = eigenvalue
+            om2 = -1.0 * np.real(eigenvalue) + 1j * np.imag(eigenvalue)
+            frequencies = [om1, om2]
+            for om in frequencies:
+                upsilon_series = sum([
+                    n / (om - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
+                    for n in range(1 - terms_n, terms_n)])
+                perp_series += np.multiply(df_dv_perp, upsilon_series)
+
+                lambda_series = sum([
+                    1 / (om - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
+                    for n in range(1 - terms_n, terms_n)
+                ])
+                para_series += np.multiply(df_dv_para, lambda_series)
+        else:
+            upsilon_series = sum([
+                n / (eigenvalue - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
+                for n in range(1 - terms_n, terms_n)])
+            perp_series += np.multiply(df_dv_perp, upsilon_series)
+
+            lambda_series = sum([
+                1 / (eigenvalue - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
+                for n in range(1 - terms_n, terms_n)
+            ])
+            para_series += np.multiply(df_dv_para, lambda_series)
+
+        # Construct total eigen mode
+        vel_mode = np.exp(1j * beta * np.sin(phi)) * (perp_series - self.z.fundamental / self.om_pc * para_series)
+        potential_phase = np.tensordot(np.exp(1j * self.x.fundamental * self.x.arr),
+                                       np.exp(1j * self.z.fundamental * self.z.arr), axes=0)
+        return cp.asarray(np.imag(
+            np.tensordot(potential_phase, vel_mode, axes=0)
+        ))

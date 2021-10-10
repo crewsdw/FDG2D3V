@@ -61,7 +61,7 @@ class Plotter2D:
             # plt.colorbar(), plt.tight_layout()
 
     def time_series_plot(self, time_in, series_in, y_axis, log=False, give_rate=False):
-        time, series = time_in, series_in.get()  # / self.length
+        time, series = time_in, series_in.get() / (self.length_x * self.length_z)
         plt.figure()
         if log:
             plt.semilogy(time, series, 'o--')

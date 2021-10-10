@@ -9,15 +9,15 @@ import fluxes as fx
 import timestep as ts
 
 # elements and order
-elements, order = [6, 6, 18, 18, 18], 8
+elements, order = [4, 4, 12, 12, 12], 8
 
 # parameters
 om_pc = 1
 ring_param = 0
 
 # grid parameters
-k_perp = 1  # 0.5
-k_para = 1  # 0.25
+k_perp = 0.1  # 0.5
+k_para = 0.1  # 0.25
 length_x = 2.0 * np.pi / k_perp
 length_z = 2.0 * np.pi / k_para
 
@@ -41,7 +41,7 @@ elliptic.poisson(distribution=distribution, grid=grid)
 plotter = my_plt.Plotter2D(grid=grid)
 plotter.scalar_plot(scalar=elliptic.potential)
 plotter.scalar_plot(scalar=distribution.zero_moment)
-plotter.vector_plot(vector=elliptic.field)
+# plotter.vector_plot(vector=elliptic.field)
 plotter.show()
 
 # Set up fluxes
@@ -49,8 +49,8 @@ flux = fx.DGFlux(resolutions=elements, order=order, grid=grid, om_pc=om_pc)
 flux.initialize_zero_pad(grid=grid)
 
 # Set up timestepper
-dt = 2.5e-4
-stop_time = 5.0e-2
+dt = 5.0e-3
+stop_time = 1.0e0
 steps = int(stop_time // dt) + 1
 stepper = ts.Stepper(dt=dt, resolutions=elements, order=order, steps=steps, flux=flux)
 stepper.main_loop(distribution=distribution, elliptic=elliptic, grid=grid)
