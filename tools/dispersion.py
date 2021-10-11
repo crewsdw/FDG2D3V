@@ -104,7 +104,7 @@ z = (np.tensordot(z_r, np.ones_like(z_i), axes=0) +
      1.0j * np.tensordot(np.ones_like(z_r), z_i, axes=0))
 X, Y = np.tensordot(z_r, np.ones_like(z_i), axes=0), np.tensordot(np.ones_like(z_r), z_i, axes=0)
 
-func = modified(z, k_perp, k_para, om_pc=om_pc, ring_j=ring_j, terms=10)
+func = modified(z, k_perp, k_para, om_pc=om_pc, ring_j=ring_j, terms=20)
 re = np.real(func)
 im = np.imag(func)
 

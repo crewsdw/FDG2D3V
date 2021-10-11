@@ -141,12 +141,15 @@ class Distribution:
         #                                   ring_parameter=2.0 * cp.pi,
         #                                   eigenvalue=-3.48694202e-01j,
         #                                   parity=False)
-        sin_x = cp.sin(grid.x.fundamental * grid.x.device_arr)
-        sin_z = cp.sin(grid.z.fundamental * grid.z.device_arr)
+        # sin_x = cp.sin(grid.x.fundamental * grid.x.device_arr)
+        # sin_z = cp.sin(grid.z.fundamental * grid.z.device_arr)
+        # sin_xz = cp.sin(grid.x.fundamental * grid.x.device_arr[:, None] +
+        #                 grid.z.fundamental * grid.z.device_arr[None, :])
 
         # perturbation = cp.multiply((sin_x[:, None, None, None, None, None, None, None] +
         #                             sin_z[None, :, None, None, None, None, None, None]), ring_distribution)
-        eigenvalue = -4.13247520e-01 + 0j
+        # perturbation = sin_xz[:, :, None, None, None, None, None, None] * ring_distribution
+        eigenvalue = -1.285 + 0j  # -4.13247520e-01 - 1j * 1.0e-16
         perturbation = grid.eigenfunction(1, 0, 1, eigenvalue=eigenvalue, parity=True)
 
         self.arr_nodal = ring_distribution + 1.0e-1 * perturbation

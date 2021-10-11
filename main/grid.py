@@ -32,11 +32,14 @@ class SpaceGrid:
             self.zero_idx = 0
             self.pad_width = int((1 * self.modes) // 3 + 1)
         else:
-            self.modes = int(elements // 2.0)
-            self.wavenumbers = self.fundamental * np.arange(-self.modes, self.modes)
-            self.zero_idx = self.modes
+            self.half_modes = int(elements // 2.0)
+            self.wavenumbers = self.fundamental * np.arange(-self.half_modes, self.half_modes)
+            self.modes = self.wavenumbers.shape[0]
+            self.zero_idx = self.half_modes
             self.pad_width = int((1 * self.modes) // 3 + 1)
         # send to device
+        # print(self.modes)
+        # print(self.pad_width)
         self.device_wavenumbers = cp.array(self.wavenumbers)
 
     def create_grid(self):
@@ -167,47 +170,47 @@ class PhaseSpace:
         beta = - self.x.fundamental * r * self.om_pc
 
         # radial gradient of distribution
-        vt = perp_vt
-        x = 0.5 * (r / vt) ** 2.0
-        df_dv_perp = ((self.ring_distribution(perp_vt, ring_parameter - 1, para_vt) -
-                      self.ring_distribution(perp_vt, ring_parameter, para_vt)) / (perp_vt ** 2.0)).get()
+        if ring_parameter > 0:
+            df_dv_perp = ((self.ring_distribution(perp_vt, ring_parameter - 1, para_vt) -
+                          self.ring_distribution(perp_vt, ring_parameter, para_vt)) / (perp_vt ** 2.0)).get()
+        else:
+            df_dv_perp = (-1.0 / perp_vt ** 2.0) * self.ring_distribution(perp_vt, ring_parameter, para_vt).get()
 
         df_dv_para = np.multiply(-w / para_vt ** 2.0, self.ring_distribution(perp_vt, ring_parameter, para_vt).get())
 
         perp_series = 0 + 0j
         para_series = 0 + 0j
+        k_para = -1.0 * self.z.fundamental / self.om_pc
         terms_n = 10
         if parity:
             om1 = eigenvalue
             om2 = -1.0 * np.real(eigenvalue) + 1j * np.imag(eigenvalue)
             frequencies = [om1, om2]
             for om in frequencies:
-                upsilon_series = sum([
-                    n / (om - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
-                    for n in range(1 - terms_n, terms_n)])
+                upsilon_series = np.array([
+                    n / (om - k_para * w - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
+                    for n in range(1 - terms_n, terms_n)]).sum(axis=0)
                 perp_series += np.multiply(df_dv_perp, upsilon_series)
 
-                lambda_series = sum([
-                    1 / (om - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
-                    for n in range(1 - terms_n, terms_n)
-                ])
+                lambda_series = np.array([
+                    1 / (om - k_para * w - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
+                    for n in range(1 - terms_n, terms_n)]).sum(axis=0)
                 para_series += np.multiply(df_dv_para, lambda_series)
         else:
-            upsilon_series = sum([
-                n / (eigenvalue - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
-                for n in range(1 - terms_n, terms_n)])
+            upsilon_series = np.array([
+                n / (eigenvalue - k_para * w - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
+                for n in range(1 - terms_n, terms_n)]).sum(axis=0)
             perp_series += np.multiply(df_dv_perp, upsilon_series)
 
-            lambda_series = sum([
-                1 / (eigenvalue - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
-                for n in range(1 - terms_n, terms_n)
-            ])
+            lambda_series = np.array([
+                1 / (eigenvalue - k_para * w - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
+                for n in range(1 - terms_n, terms_n)]).sum(axis=0)
             para_series += np.multiply(df_dv_para, lambda_series)
 
         # Construct total eigen mode
-        vel_mode = np.exp(1j * beta * np.sin(phi)) * (perp_series - self.z.fundamental / self.om_pc * para_series)
-        potential_phase = np.tensordot(np.exp(1j * self.x.fundamental * self.x.arr),
-                                       np.exp(1j * self.z.fundamental * self.z.arr), axes=0)
-        return cp.asarray(np.imag(
+        vel_mode = -1j * np.exp(1j * beta * np.sin(phi)) * (perp_series + k_para * para_series)
+        potential_phase = np.tensordot(np.exp(-1j * self.x.fundamental * self.x.arr),
+                                       np.exp(-1j * self.z.fundamental * self.z.arr), axes=0)
+        return cp.asarray(np.real(
             np.tensordot(potential_phase, vel_mode, axes=0)
         ))

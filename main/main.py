@@ -9,7 +9,7 @@ import fluxes as fx
 import timestep as ts
 
 # elements and order
-elements, order = [4, 4, 12, 12, 12], 8
+elements, order = [4, 4, 11, 11, 11], 8
 
 # parameters
 om_pc = 1
@@ -49,8 +49,8 @@ flux = fx.DGFlux(resolutions=elements, order=order, grid=grid, om_pc=om_pc)
 flux.initialize_zero_pad(grid=grid)
 
 # Set up timestepper
-dt = 5.0e-3
-stop_time = 1.0e0
+dt = 3.0e-3
+stop_time = 5.0  # np.pi
 steps = int(stop_time // dt) + 1
 stepper = ts.Stepper(dt=dt, resolutions=elements, order=order, steps=steps, flux=flux)
 stepper.main_loop(distribution=distribution, elliptic=elliptic, grid=grid)
