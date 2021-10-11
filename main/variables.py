@@ -149,10 +149,10 @@ class Distribution:
         # perturbation = cp.multiply((sin_x[:, None, None, None, None, None, None, None] +
         #                             sin_z[None, :, None, None, None, None, None, None]), ring_distribution)
         # perturbation = sin_xz[:, :, None, None, None, None, None, None] * ring_distribution
-        eigenvalue = -1.285 + 0j  # -4.13247520e-01 - 1j * 1.0e-16
-        perturbation = grid.eigenfunction(1, 0, 1, eigenvalue=eigenvalue, parity=True)
+        eigenvalue = -4.132e-1 + 0j  # -1.285 + 0j  # -4.13247520e-01 - 1j * 1.0e-16
+        perturbation = grid.eigenfunction(1, 0, 1, eigenvalue=eigenvalue, parity=False)
 
-        self.arr_nodal = ring_distribution + 1.0e-1 * perturbation
+        self.arr_nodal = ring_distribution + 1.0e-2 * perturbation
 
 
 def trapz(f, dx, dz):

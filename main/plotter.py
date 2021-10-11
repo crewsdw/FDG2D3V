@@ -80,3 +80,63 @@ class Plotter2D:
 
     def show(self):
         plt.show()
+
+
+class Plotter3D:
+    """
+    Plots objects on 3D piecewise (as in DG) grid
+    """
+
+    def __init__(self, grid):
+        # Build structured grid, full space
+        (iu, iv, iw) = (cp.ones(grid.u.elements * grid.u.order),
+                        cp.ones(grid.v.elements * grid.v.order),
+                        cp.ones(grid.w.elements * grid.w.order))
+        # modified_x = cp.append(grid.x.device_arr, grid.x.device_arr[-1] + grid.x.dx)
+        # (x3, u3, v3) = (outer3(a=modified_x, b=iu, c=iv),
+        #                 outer3(a=ix, b=grid.u.device_arr.flatten(), c=iv),
+        #                 outer3(a=ix, b=iu, c=grid.v.device_arr.flatten()))
+        (u3, v3, w3) = (outer3(a=grid.u.device_arr.flatten(), b=iu, c=iv),
+                        outer3(a=iu, b=grid.v.device_arr.flatten(), c=iv),
+                        outer3(a=iu, b=iu, c=grid.w.device_arr.flatten()))
+        self.grid = pv.StructuredGrid(u3, v3, w3)
+
+        # build structured grid, spectral space
+        # ix2 = cp.ones(grid.x.modes)
+        # u3_2, v3_2 = (outer3(a=ix2, b=grid.u.device_arr.flatten(), c=iv),
+        #               outer3(a=ix2, b=iu, c=grid.v.device_arr.flatten()))
+        # k3 = outer3(a=grid.x.device_wavenumbers, b=iu, c=iv)
+        # self.spectral_grid = pv.StructuredGrid(k3, u3_2, v3_2)
+
+    def distribution_contours3d(self, distribution, spectral_idx, real):
+        """
+        plot contours of a scalar function f=f(x,y,z) on Plotter3D's grid
+        """
+        if real:
+            new_dist = np.real(distribution.arr[spectral_idx[0], spectral_idx[1], :, :, :].get())
+        else:
+            new_dist = np.imag(distribution.arr[spectral_idx[0], spectral_idx[1], :, :, :].get())
+
+        self.grid['.'] = new_dist.reshape((new_dist.shape[0]*new_dist.shape[1], new_dist.shape[2]*new_dist.shape[3],
+                                           new_dist.shape[4]*new_dist.shape[5])).transpose().flatten()
+
+        contours = np.linspace(-0.8*np.amax(new_dist), 0.8*np.amax(new_dist), num=150)
+        plot_contours = self.grid.contour(contours)
+
+        # Create plot
+        p = pv.Plotter()
+        p.add_mesh(plot_contours, cmap='summer', show_scalar_bar=True, opacity=0.9)
+        p.show_grid()
+        p.show()  # auto_close=False)
+
+
+def outer3(a, b, c):
+    """
+    Compute outer tensor product of vectors a, b, and c
+    :param a: vector a_i
+    :param b: vector b_j
+    :param c: vector c_k
+    :return: tensor a_i b_j c_k as numpy array
+    """
+    return cp.tensordot(a, cp.tensordot(b, c, axes=0), axes=0).get()
+

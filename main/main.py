@@ -9,7 +9,7 @@ import fluxes as fx
 import timestep as ts
 
 # elements and order
-elements, order = [4, 4, 11, 11, 11], 8
+elements, order = [4, 4, 15, 15, 15], 8
 
 # parameters
 om_pc = 1
@@ -44,13 +44,19 @@ plotter.scalar_plot(scalar=distribution.zero_moment)
 # plotter.vector_plot(vector=elliptic.field)
 plotter.show()
 
+# plotter3d = my_plt.Plotter3D(grid=grid)
+# plotter3d.distribution_contours3d(distribution=distribution, spectral_idx=[grid.x.zero_idx, grid.z.zero_idx],
+#                                   real=True)
+# plotter3d.distribution_contours3d(distribution=distribution, spectral_idx=[grid.x.zero_idx+1, grid.z.zero_idx+1],
+#                                   real=True)
+
 # Set up fluxes
 flux = fx.DGFlux(resolutions=elements, order=order, grid=grid, om_pc=om_pc)
 flux.initialize_zero_pad(grid=grid)
 
 # Set up timestepper
 dt = 3.0e-3
-stop_time = 5.0  # np.pi
+stop_time = 1.0  # 2.5  # np.pi
 steps = int(stop_time // dt) + 1
 stepper = ts.Stepper(dt=dt, resolutions=elements, order=order, steps=steps, flux=flux)
 stepper.main_loop(distribution=distribution, elliptic=elliptic, grid=grid)
