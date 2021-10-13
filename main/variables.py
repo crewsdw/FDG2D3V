@@ -20,6 +20,9 @@ class SpaceScalar:
         arr_add[:-1, -1] = self.arr_nodal[:, 0]
         arr_add[-1, -1] = self.arr_nodal[0, 0]
         return trapz(arr_add, grid.x.dx, grid.z.dx)
+        # spectral_magnitude = cp.absolute(self.arr_spectral) ** 2.0
+        # return cp.sum(spectral_magnitude) * (grid.x.length * grid.z.length)
+
     #
     # def spectral_magnitude_squared(self):
     #     return self.arr_spectral ** 2.0
@@ -66,9 +69,13 @@ class SpaceVector:
 
     def integrate_energy(self, grid):
         self.inverse_fourier_transform()
+        # self.energy.arr_spectral =
+        # self.fourier_transform()
+        # spectral_magnitudes = (cp.absolute(self.arr_spectral[0, :, :]) ** 2.0 +
+        #                        cp.absolute(self.arr_spectral[1, :, :]) ** 2.0)
+        # return cp.sum(spectral_magnitudes) * (grid.x.length * grid.z.length)
         self.energy.arr_nodal = self.arr_nodal[0, :, :] ** 2.0 + self.arr_nodal[1, :, :] ** 2.0
         return 0.5 * self.energy.integrate(grid=grid)
-        # return 0.5 * cp.sum(self.spectral_magnitude_squared()) * (4.0 * cp.pi ** 2.0) / (self.res_x * self.res_y)
 
 
 class Distribution:
@@ -119,6 +126,17 @@ class Distribution:
                     idx=[4, 5]),
                 idx=[2, 3])
         )
+        # integrand = grid.v_mag_sq[None, None, :, :, :, :, :, :] * self.arr
+        # self.second_moment.arr_spectral = (
+        #     grid.u.zero_moment(
+        #         function=grid.v.zero_moment(
+        #             function=grid.w.zero_moment(
+        #                 function=integrand,
+        #                 idx=[6, 7]),
+        #             idx=[4, 5]),
+        #         idx=[2, 3])
+        # )
+        # return self.second_moment.integrate(grid=grid)
         return 0.5 * self.second_moment.integrate(grid=grid)
 
     def initialize(self, grid):
@@ -149,10 +167,13 @@ class Distribution:
         # perturbation = cp.multiply((sin_x[:, None, None, None, None, None, None, None] +
         #                             sin_z[None, :, None, None, None, None, None, None]), ring_distribution)
         # perturbation = sin_xz[:, :, None, None, None, None, None, None] * ring_distribution
-        eigenvalue = -4.132e-1 + 0j  # -1.285 + 0j  # -4.13247520e-01 - 1j * 1.0e-16
+        # eigenvalue = 1.34728666 - 0.00276027j  # 5.623e-1
+        eigenvalue = 5.62309277e-01 - 1j * 2.00341873e-05
+        # eigenvalue = 4.132e-1 + 0j  # -1.285 + 0j  # -4.13247520e-01 - 1j * 1.0e-16
+        # eigenvalue = 2.64 - 1.633j
         perturbation = grid.eigenfunction(1, 0, 1, eigenvalue=eigenvalue, parity=False)
 
-        self.arr_nodal = ring_distribution + 1.0e-2 * perturbation
+        self.arr_nodal = ring_distribution + 1.0e-1 * perturbation
 
 
 def trapz(f, dx, dz):

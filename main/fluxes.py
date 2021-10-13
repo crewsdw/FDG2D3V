@@ -111,7 +111,8 @@ class DGFlux:
         self.output = var.Distribution(resolutions=resolutions, order=order)
 
         # magnetic field
-        self.b_field = -1.0 / om_pc  # a constant
+        self.b_field = 1.0 / om_pc  # a constant
+        self.charge = -1.0
 
         self.pad_field = None
         self.pad_spectrum = None
@@ -173,22 +174,23 @@ class DGFlux:
         # self.field_flux_w.fourier_transform()
 
     def u_flux_lgl(self, distribution, grid):
-        u_flux = (-1.0 * self.field_flux_u.arr + self.b_field *
+        u_flux = self.charge * (self.field_flux_u.arr + self.b_field *
                   cp.multiply(grid.v.device_arr[None, None, None, None, :, :, None, None], distribution.arr))
         return (basis_product(flux=u_flux, basis_arr=grid.u.local_basis.internal,
                               axis=3, permutation=self.permutations[0]) -
                 self.numerical_flux_lgl(flux=u_flux, grid=grid, dim=0))
 
     def v_flux_lgl(self, distribution, grid):
-        v_flux = -self.b_field * grid.u.device_arr[None, None, :, :, None, None, None, None] * distribution.arr
+        v_flux = self.charge * (-self.b_field * grid.u.device_arr[None, None, :, :, None, None, None, None] *
+                                distribution.arr)
         return (basis_product(flux=v_flux, basis_arr=grid.v.local_basis.internal,
                               axis=5, permutation=self.permutations[1]) -
                 self.numerical_flux_lgl(flux=v_flux, grid=grid, dim=1))
 
     def w_flux_lgl(self, distribution, grid):
-        return (basis_product(flux=-1.0 * self.field_flux_w.arr, basis_arr=grid.w.local_basis.internal,
+        return (basis_product(flux=self.charge * self.field_flux_w.arr, basis_arr=grid.w.local_basis.internal,
                               axis=7, permutation=self.permutations[2]) -
-                self.numerical_flux_lgl(flux=-1.0 * self.field_flux_w.arr, grid=grid, dim=2))
+                self.numerical_flux_lgl(flux=self.charge * self.field_flux_w.arr, grid=grid, dim=2))
 
     def source_term_lgl(self, distribution, grid):
         return -1j * (cp.multiply(grid.x.device_wavenumbers[:, None, None, None, None, None, None, None],

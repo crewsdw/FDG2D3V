@@ -60,7 +60,7 @@ class Plotter2D:
             # plt.contourf(self.KX, self.KZ, spectrum_abs, cb_x)
             # plt.colorbar(), plt.tight_layout()
 
-    def time_series_plot(self, time_in, series_in, y_axis, log=False, give_rate=False):
+    def time_series_plot(self, time_in, series_in, y_axis, log=False, give_rate=False, axis=False):
         time, series = time_in, series_in.get() / (self.length_x * self.length_z)
         plt.figure()
         if log:
@@ -70,6 +70,8 @@ class Plotter2D:
         plt.xlabel('Time')
         plt.ylabel(y_axis)
         plt.grid(True), plt.tight_layout()
+        if axis:
+            plt.axis([0, time[-1], 0, 1.1*np.amax(series)])
         if give_rate:
             lin_fit = np.polyfit(time, np.log(series), 1)
             exact = 2 * 0.1 * 3.48694202e-01

@@ -14,9 +14,18 @@ class Elliptic:
         # Compute potential and field spectrum
         self.potential.arr_spectral = -1.0 * cp.nan_to_num(cp.divide(distribution.zero_moment.arr_spectral, grid.k_sq))
         self.field.arr_spectral[0, :, :] = -1j * cp.multiply(grid.x.device_wavenumbers[:, None],
-                                                             self.potential.arr_spectral)
+                                                            self.potential.arr_spectral)
         self.field.arr_spectral[1, :, :] = -1j * cp.multiply(grid.z.device_wavenumbers[None, :],
-                                                             self.potential.arr_spectral)
+                                                            self.potential.arr_spectral)
+
+        # print(distribution.zero_moment.arr_spectral)
+        # print(distribution.zero_moment.arr_spectral[grid.x.zero_idx + 1, grid.z.zero_idx + 1])
+        # print(self.potential.arr_spectral[grid.x.zero_idx + 1, grid.z.zero_idx + 1])
+        # print(self.field.arr_spectral[0, grid.x.zero_idx + 1, grid.z.zero_idx + 1])
+        # print(self.field.arr_spectral[1, grid.x.zero_idx + 1, grid.z.zero_idx + 1])
+        print(self.field.arr_spectral[0, :, :])
+        print(self.field.arr_spectral[1, :, :])
+        # quit()
 
         if invert:
             self.potential.inverse_fourier_transform()

@@ -41,6 +41,7 @@ class SpaceGrid:
         # print(self.modes)
         # print(self.pad_width)
         self.device_wavenumbers = cp.array(self.wavenumbers)
+        print(self.wavenumbers)
 
     def create_grid(self):
         """ Build evenly spaced grid, assumed periodic """
@@ -135,10 +136,15 @@ class PhaseSpace:
                          self.w.device_arr[None, None, None, None, :, :] ** 2.0)
         self.k_sq = (self.x.device_wavenumbers[:, None] ** 2.0 + self.z.device_wavenumbers[None, :] ** 2.0)
 
+        print(self.k_sq)
+        print(self.x.zero_idx)
+        print(self.z.zero_idx)
+        # quit()
+
         # Parameters
         self.om_pc = om_pc  # cyclotron freq. ratio
 
-    def ring_distribution(self, perp_vt, ring_parameter, para_vt):
+    def ring_distribution(self, perp_vt, ring_parameter, para_vt, device=True):
         # Cylindrical coordinates grid set-up, using wave-number x.k1
         iu, iv, iw = np.ones_like(self.u.arr), np.ones_like(self.v.arr), np.ones_like(self.w.arr)
         u = np.tensordot(self.u.arr, np.tensordot(iv, iw, axes=0), axes=0)
@@ -149,13 +155,16 @@ class PhaseSpace:
         # Set perpendicular distribution
         x = 0.5 * (r / perp_vt) ** 2.0
         perp_factor = 1 / (2.0 * np.pi * (perp_vt ** 2.0) * sp.gamma(ring_parameter + 1.0))
-        ring = perp_factor * np.multiply(x ** ring_parameter, np.exp(-x))
+        ring = perp_factor * (x ** ring_parameter) * np.exp(-x)
 
         # Set parallel distribution
         para_factor = 1 / np.sqrt(2.0 * np.pi * para_vt ** 2.0)
         maxwellian = para_factor * np.exp(-0.5 * w ** 2.0)
 
-        return cp.asarray(np.multiply(ring, maxwellian))
+        if device:
+            return cp.asarray(ring * maxwellian)
+        else:
+            return ring * maxwellian
 
     def eigenfunction(self, perp_vt, ring_parameter, para_vt, eigenvalue, parity):
         # Cylindrical coordinates grid set-up, using wave-number x.k1
@@ -167,19 +176,26 @@ class PhaseSpace:
         phi = np.arctan2(v, u)
 
         # -k * v / om_c in units of debye length
-        beta = - self.x.fundamental * r * self.om_pc
+        beta = self.x.fundamental * r * self.om_pc
 
         # radial gradient of distribution
-        if ring_parameter > 0:
-            df_dv_perp = ((self.ring_distribution(perp_vt, ring_parameter - 1, para_vt) -
-                          self.ring_distribution(perp_vt, ring_parameter, para_vt)) / (perp_vt ** 2.0)).get()
-        else:
-            df_dv_perp = (-1.0 / perp_vt ** 2.0) * self.ring_distribution(perp_vt, ring_parameter, para_vt).get()
+        # if ring_parameter > 0:
+        #     df_dv_perp = ((self.ring_distribution(perp_vt, ring_parameter - 1, para_vt) -
+        #                    self.ring_distribution(perp_vt, ring_parameter, para_vt)) / (perp_vt ** 2.0)).get()
+        # else:
+        #     df_dv_perp = (-1.0 / perp_vt ** 2.0) * self.ring_distribution(perp_vt, ring_parameter,
+        #                                                                   para_vt, device=False)
+        #
+        # df_dv_para = np.multiply(-w / para_vt ** 2.0, self.ring_distribution(perp_vt, ring_parameter,
+        #                                                                      para_vt, device=False))
+        f0 = np.exp(-0.5 * r ** 2.0) * np.exp(-0.5 * w ** 2.0) / (2.0 * np.pi) ** 1.5
+        df_dv_perp = -f0
+        df_dv_para = -w * f0
 
-        df_dv_para = np.multiply(-w / para_vt ** 2.0, self.ring_distribution(perp_vt, ring_parameter, para_vt).get())
+        k_para = self.z.fundamental * self.om_pc
+        k_perp = self.x.fundamental * self.om_pc
 
-        k_para = -1.0 * self.z.fundamental / self.om_pc
-        terms_n = 15
+        terms_n = 20
         if parity:
             om1 = eigenvalue
             om2 = -1.0 * np.real(eigenvalue) + 1j * np.imag(eigenvalue)
@@ -188,12 +204,12 @@ class PhaseSpace:
             para_series = 0 + 0j
             for om in frequencies:
                 upsilon_series = np.array([
-                    n / (om - k_para * w - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
+                    sp.jv(n, beta) * np.exp(-1j * n * phi) * n / (om - k_para * w - n)
                     for n in range(1 - terms_n, terms_n)]).sum(axis=0)
                 perp_series += np.multiply(df_dv_perp, upsilon_series)
 
                 lambda_series = np.array([
-                    1 / (om - k_para * w - n) * np.multiply(sp.jv(n, beta), np.exp(-1j * n * phi))
+                    sp.jv(n, beta) * np.exp(-1j * n * phi) / (om - k_para * w - n)
                     for n in range(1 - terms_n, terms_n)]).sum(axis=0)
                 para_series += np.multiply(df_dv_para, lambda_series)
         else:
@@ -208,9 +224,10 @@ class PhaseSpace:
             para_series = np.multiply(df_dv_para, lambda_series)
 
         # Construct total eigen mode
-        vel_mode = -1j * np.exp(1j * beta * np.sin(phi)) * (perp_series + k_para * para_series)
-        potential_phase = np.tensordot(np.exp(1j * self.x.fundamental * self.x.arr),
-                                       np.exp(1j * self.z.fundamental * self.z.arr), axes=0)
+        # vel_mode = np.exp(1j * k_perp * r * np.sin(phi)) * (perp_series + k_para * para_series)
+        vel_mode = np.exp(1j * k_perp * v) * (perp_series + k_para * para_series)
+        potential_phase = np.tensordot(np.exp(1j * k_perp * self.x.arr),
+                                       np.exp(1j * k_para * self.z.arr), axes=0)
         return cp.asarray(np.real(
             np.tensordot(potential_phase, vel_mode, axes=0)
         ))

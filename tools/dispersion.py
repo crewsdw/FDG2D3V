@@ -36,10 +36,10 @@ def para_perp_integral(n, j, x):
 def perp_integral(n, j, x):
     n = abs(n)
     if j > 0:
-        int1 = sp.gamma(n + j) * hyp2f2(n, j - 1, x, terms=20) * sp.rgamma(j)
+        int1 = sp.gamma(n + j) * hyp2f2(n, j - 1, x, terms=30) * sp.rgamma(j)
     else:
         int1 = 0
-    int2 = sp.gamma(n + j + 1) * hyp2f2(n, j, x, terms=20) * sp.rgamma(j + 1)
+    int2 = sp.gamma(n + j + 1) * hyp2f2(n, j, x, terms=30) * sp.rgamma(j + 1)
     return ((-x / 4.0) ** n) * (int2 - int1) / (sp.gamma(n + 1) ** 2.0)
 
 
@@ -48,19 +48,22 @@ def modified(z, k_perp, k_para, om_pc, ring_j, terms):
     ksq = k_perp ** 2.0 + k_para ** 2.0
     # compute hyper-geometric
     # print([s for s in range(1 - terms, terms)])
+    sq2 = np.sqrt(2.0)
     return 1.0 - om_pc ** 2.0 / ksq * sum([
-        (para_perp_integral(n=s, j=ring_j, x=x) * 0.5 * pd.Zprime((z - s) / k_para) -
-         perp_integral(n=s, j=ring_j, x=x) * s / k_para * pd.Z((z - s) / k_para))
+        (para_perp_integral(n=s, j=ring_j, x=x) * 0.5 * pd.Zprime((z - s) / (sq2 * k_para)) -
+         perp_integral(n=s, j=ring_j, x=x) * s / (sq2 * k_para) * pd.Z((z - s) / (sq2 * k_para)))
         for s in range(1 - terms, terms)])
 
 
-def analytic_jacobian(z, k_perp, k_para, om_pc, ring_j, terms):
+def analytic_jacobian(z, k_perp, k_para0, om_pc, ring_j, terms):
     x = -2 * k_perp ** 2.0
-    ksq = k_perp ** 2.0 + k_para ** 2.0
+    ksq = k_perp ** 2.0 + k_para0 ** 2.0
     # return -om_pc ** 2.0 / ksq * sum([
     #     perp_integral(n=s, j=ring_j, x=x) * (0.5 * pd.Zdoubleprime((z - s) / k_para) / k_para -
     #                                          s / k_para * pd.Zprime((z - s) / (k_para ** 2.0)))
     #     for s in range(1 - terms, terms)])
+    sq2 = np.sqrt(2.0)
+    k_para = sq2 * k_para0
     return -om_pc ** 2.0 / ksq * sum([
         (para_perp_integral(n=s, j=ring_j, x=x) * 0.5 * pd.Zdoubleprime((z - s) / k_para) / k_para -
          perp_integral(n=s, j=ring_j, x=x) * s / k_para * pd.Zprime((z - s) / k_para) / k_para)
@@ -70,10 +73,14 @@ def analytic_jacobian(z, k_perp, k_para, om_pc, ring_j, terms):
 def standard(z, k_perp, k_para, terms):
     b = k_perp ** 2.0
     ksq = k_perp ** 2.0 + k_para ** 2.0
-    return 1.0 - np.exp(-b) / ksq * sum([
-        sp.iv(abs(s), b) * (0.5 * pd.Zprime((z - s) / k_para) - s / k_para * pd.Z((z - s) / k_para))
+    # print(sp.iv(-1, 0) * np.exp(1))
+    # quit()
+    sq2 = np.sqrt(2.0)
+    return 1.0 - np.exp(-b) / ksq * np.array([
+        sp.iv(s, b) * (0.5 * pd.Zprime((z - s) / (sq2 * k_para)) -
+                       s / (sq2 * k_para) * pd.Z((z - s) / (sq2 * k_para)))
         for s in range(1 - terms, terms)
-    ])
+    ]).sum(axis=0)
 
 
 def dispersion_fsolve(om, wave, om_pc, ring_j, terms):
@@ -96,15 +103,18 @@ ring_j = 0
 angle = 45 * np.pi / 180.0
 k_perp = 0.1
 k_para = k_perp / np.tan(angle)
+# k_perp = 1
+# k_para = 0
 print(k_para), print(k_perp)
 
-z_r = np.linspace(-1.5, 3.5, num=500)
-z_i = np.linspace(-0.5, 0.5, num=500)
+z_r = np.linspace(-0.5, 4.5, num=500)
+z_i = np.linspace(-0.3, 0.3, num=500)
 z = (np.tensordot(z_r, np.ones_like(z_i), axes=0) +
      1.0j * np.tensordot(np.ones_like(z_r), z_i, axes=0))
 X, Y = np.tensordot(z_r, np.ones_like(z_i), axes=0), np.tensordot(np.ones_like(z_r), z_i, axes=0)
 
-func = modified(z, k_perp, k_para, om_pc=om_pc, ring_j=ring_j, terms=20)
+func = modified(z, k_perp, k_para, om_pc=om_pc, ring_j=ring_j, terms=15)
+# func = standard(z, k_perp, k_para, terms=15)
 re = np.real(func)
 im = np.imag(func)
 
@@ -118,7 +128,7 @@ plt.contour(X, Y, np.imag(func), 0, colors='r')
 plt.grid(True), plt.show()
 
 # Root analysis: single root
-guess_r, guess_i = 0.413, 0
+guess_r, guess_i = 0.56, -0.001
 solution = opt.root(dispersion_fsolve, x0=np.array([guess_r, guess_i]),
                     args=([k_perp, k_para], om_pc, ring_j, 10), jac=jacobian_fsolve)
 print(solution.x)

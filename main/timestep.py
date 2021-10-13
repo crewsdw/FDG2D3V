@@ -59,6 +59,11 @@ class Stepper:
                 self.time_array = np.append(self.time_array, self.time)
                 elliptic.poisson(distribution=distribution, grid=grid)
                 self.field_energy = np.append(self.field_energy, elliptic.compute_field_energy(grid=grid))
+                print(self.field_energy)
+                # field_sq = (np.absolute(elliptic.field.arr_spectral[0, :, :].get()) ** 2.0 +
+                #             np.absolute(elliptic.field.arr_spectral[1, :, :].get()) ** 2.0)
+                # print(field_sq.sum())
+                quit()
                 self.thermal_energy = np.append(self.thermal_energy, distribution.total_thermal_energy(grid=grid))
                 self.density_array = np.append(self.density_array, distribution.total_density(grid=grid))
                 print('\nTook x steps, time is {:0.3e}'.format(self.time))

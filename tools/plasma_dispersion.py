@@ -6,8 +6,8 @@ def Z_uniform(z):
     out = np.zeros_like(z) + 0j
     z_large = z[np.abs(z) >= 15]
     z_small = z[np.abs(z) < 15]
-    # out[np.abs(z) < 15] = 1j * np.sqrt(np.pi) * np.exp(-z_small ** 2.0) * (1.0 + sp.erf(1j * z_small))
-    out[np.abs(z) < 15] = np.sqrt(np.pi) * 1j * sp.wofz(z_small)
+    out[np.abs(z) < 15] = 1j * np.sqrt(np.pi) * np.exp(-z_small ** 2.0) * (1.0 + sp.erf(1j * z_small))
+    # out[np.abs(z) < 15] = np.sqrt(np.pi) * 1j * sp.wofz(z_small)
     out[np.abs(z) >= 15] = Z_asymptotic(z_large)
     return out
 
